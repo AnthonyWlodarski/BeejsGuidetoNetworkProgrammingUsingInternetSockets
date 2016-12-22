@@ -1,5 +1,5 @@
 /*
- * gets a socket descriptor for a given address
+ * gets a connection to the specific hostname on a port
  */
 
 #include <stdio.h>
@@ -13,11 +13,10 @@
 
 int main(int argc, char *argv[]) {
 	struct addrinfo hints, *res;
-	int status, s;
-	char ipstr[INET6_ADDRSTRLEN];
+	int status, sockfd;
 
-	if (argc != 2) {
-		fprintf(stderr, "usage: socket hostname\n");
+	if (argc != 3) {
+		fprintf(stderr, "usage: connect hostname port\n");
 		return 1;
 	}
 
@@ -30,18 +29,24 @@ int main(int argc, char *argv[]) {
 
 	// if getaddrinfo returns abnormal information we will print out the error
 	// to stderr
-	if ((status = getaddrinfo(argv[1], NULL, &hints, &res)) != 0) {
+	if ((status = getaddrinfo(argv[1], argv[2], &hints, &res)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
 	}
 
-	if((s = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) == -1) {
+	if ((sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) == -1) {
 		int socket_error = errno;
 		// if we can't get the right descriptor print out a error message and save errno
-		perror("Unable to get socket descriptor");
 		fprintf(stderr, "Unable to get socket descriptor: %s\n", strerror(socket_error));
 		return 2;
 	}
 
+	// connect to the socket
+	if (connect(sockfd, res->ai_addr, res->ai_addrlen) == -1) {
+		int bind_error = errno;
+		// if we can't get the right descriptor print out a error message and save errno
+		fprintf(stderr, "Unable to connect to %s on port %s: %s\n", argv[1], argv[2], strerror(bind_error));
+		return 3;
+	}
 
 	freeaddrinfo(res);
 	// everything went well tell the os as well
